@@ -303,18 +303,19 @@ struct AchievementPage {
                         .grayscale(this.habit!.unlockedAchievements.includes(achievement.id) ? 0 : 1)
                         .opacity(this.habit!.unlockedAchievements.includes(achievement.id) ? 1 : 0.4)
 
-                      // 已解锁徽章
-                      if (this.habit!.unlockedAchievements.includes(achievement.id)) {
-                        Text('✓')
-                          .fontSize(16)
-                          .fontColor(Color.White)
-                          .backgroundColor('#4CAF50')
-                          .width(24)
-                          .height(24)
-                          .borderRadius(12)
-                          .textAlign(TextAlign.Center)
-                          .position({ x: 60, y: 5 })
-                      }
+                      // // 已解锁徽章
+                      // if (this.habit!.unlockedAchievements.includes(achievement.id)) {
+                      //   Text('✓')
+                      //     .fontSize(16)
+                      //     .fontColor('#4CAF50')
+                      //     .backgroundColor(Color.White)
+                      //     .border({ color: '#4CAF50' })  // 绿色边框
+                      //     .width(24)
+                      //     .height(24)
+                      //     .borderRadius(12)
+                      //     .textAlign(TextAlign.Center)
+                      //     .position({ x: 60, y: 5 })
+                      // }
                     }
                     .border(this.getAchievementBorder(achievement))
                     .borderRadius(40)

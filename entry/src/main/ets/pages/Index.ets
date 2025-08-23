@@ -443,7 +443,7 @@ struct Index {
         .fontColor('#666')
         .lineHeight(22)
 
-      Row({ space: 15 }) {
+      Row({ space: 20 }) {
         Button('取消')
           .layoutWeight(1)
           .backgroundColor('#F5F5F5')
@@ -465,11 +465,7 @@ struct Index {
       }
       .width('100%')
     }
-    .width('85%')
     .padding(30)
-    .backgroundColor(Color.White)
-    .borderRadius(20)
-    .shadow({ radius: 20, color: '#1F000000', offsetY: 8 })
   }
 
   // 新增：统计卡片Builder
@@ -665,8 +661,8 @@ struct Index {
                       .fontSize(18)
                       .fontColor('#999')
                   }
-                  .width(30)
-                  .height(30)
+                  .width(20)
+                  .height(20)
                   .backgroundColor('#F5F5F5')
                   .onClick(() => {
                     this.habitToDeleteIndex = index;
