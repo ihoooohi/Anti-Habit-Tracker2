@@ -439,10 +439,10 @@ struct Index {
                   .backgroundColor(Color.White)
                   .borderRadius(15)
                   .shadow({
-                    radius: 8,
-                    color: '#1A000000',
+                    radius: 12,
+                    color: '#33000000',
                     offsetX: 0,
-                    offsetY: 4
+                    offsetY: 6
                   })
                   .alignItems(HorizontalAlign.Center)
 
