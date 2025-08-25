@@ -55,11 +55,9 @@ class HabitStorage {
         return [];
       }
 
-      // 3. 关键！将通用对象转换回 AntiHabit 类的实例
-      // 因为 JSON.parse 无法恢复类的方法和正确的 Date 类型
-      return rawHabits.map(item =>
-      new AntiHabit(item.id, item.name, new Date(item.lastBreakDate), item.unlockedAchievements || [])
-      );
+      // 3. 关键！使用 AntiHabit.fromJSON 将通用对象转换回 AntiHabit 类的实例
+      // 这样可以确保所有字段（包括 failureLogs）都被正确恢复
+      return rawHabits.map(item => AntiHabit.fromJSON(item));
     } catch (e) {
       console.error('Failed to load habits.', JSON.stringify(e));
       return []; // 如果加载失败，返回一个空数组防止应用崩溃
