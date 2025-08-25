@@ -1,6 +1,8 @@
 {
   "src": [
     "pages/Index",
-    "pages/HabitDetailPage"
+    "pages/HabitDetailPage",
+    "pages/RecordsPage",
+    "pages/ProfilePage"
   ]
 }
