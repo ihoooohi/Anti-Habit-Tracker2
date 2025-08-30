@@ -195,7 +195,7 @@ struct Index {
         this.achievementDialogController.close()
       })
   }
-  .width('85%')
+  .width('100%')
   .padding(30)
   .backgroundColor(Color.White)
   .borderRadius(20)
