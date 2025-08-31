@@ -11,6 +11,30 @@
     {
       "name": "EntryAbility_label",
       "value": "AntiHabit"
+    },
+    {
+      "name": "reason_read_media",
+      "value": "访问相册权限，用于更换头像"
+    },
+    {
+      "name": "usedScene_read_media",
+      "value": "用户点击头像时使用"
+    },
+    {
+      "name": "read_media_reason",
+      "value": "用于从相册选择头像"
+    },
+    {
+      "name": "write_media_reason",
+      "value": "用于保存用户头像到相册"
+    },
+    {
+      "name": "read_media_scene",
+      "value": "用户上传头像"
+    },
+    {
+      "name": "write_media_scene",
+      "value": "用户上传头像"
     }
   ]
 }

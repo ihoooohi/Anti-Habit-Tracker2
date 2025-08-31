@@ -13,6 +13,21 @@
     "deliveryWithInstall": true,
     "installationFree": false,
     "pages": "$profile:main_pages",
+
+    // === 在这里添加权限声明 ===
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.READ_MEDIA",
+        "reason": "$string:read_media_reason",
+        "usedScene": {}
+      },
+      {
+        "name": "ohos.permission.WRITE_MEDIA",
+        "reason": "$string:write_media_reason",
+        "usedScene": {}
+      }
+    ],
+
     "abilities": [
       {
         "name": "EntryAbility",
@@ -48,6 +63,7 @@
           }
         ],
       }
-    ]
+    ],
+
   }
 }

@@ -3,6 +3,7 @@
     "pages/Index",
     "pages/HabitDetailPage",
     "pages/RecordsPage",
-    "pages/ProfilePage"
+    "pages/ProfilePage",
+    "pages/EditProfilePage"
   ]
 }

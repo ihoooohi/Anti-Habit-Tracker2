@@ -99,7 +99,7 @@ struct HabitDetailPage { // 1. 重命名 Struct
           .alignItems(HorizontalAlign.Center)
         }
       })
-    }.columnsTemplate('1fr 1fr').rowsGap(15).columnsGap(15).width('90%').margin({ bottom: 30 })
+    }.columnsTemplate('1fr 1fr').rowsGap(15).columnsGap(15).width('90%').margin({ bottom: 30 }).scrollBar(BarState.Off)
   }
 
   @Builder
@@ -117,7 +117,7 @@ struct HabitDetailPage { // 1. 重命名 Struct
             .padding(20).backgroundColor(Color.White).borderRadius(10).shadow({ radius: 4, color: '#1A000000', offsetY: 2 })
           }
         })
-      }.width('90%').padding({ top: 20, bottom: 20 })
+      }.width('90%').padding({ top: 20, bottom: 20 }).scrollBar(BarState.Off)
     } else {
       Column() {
         Text('🎉').fontSize(64).opacity(0.5).margin({ bottom: 20 })

@@ -4,6 +4,15 @@ import { AntiHabit } from '../model/AntiHabit';
 import { calculateDaysBetween } from '../util/DateUtil';
 import { habitStorage } from '../util/HabitStorage';
 import { eventBus } from '../util/eventBus';
+import { router } from '@kit.ArkUI';
+import { profileStorage, ProfileInfo } from '../util/ProfileStorage';
+
+// 定义事件数据类型
+interface ProfileUpdateEvent {
+  avatarUri?: string;
+  nickname?: string;
+  signature?: string;
+}
 
 @Entry
 @Component
@@ -13,14 +22,27 @@ export struct ProfilePage {
   @State totalAchievements: number = 0;
   @State updateTrigger: number = 0; // 用于强制UI更新
 
+  @State avatarUri: string = '';
+  @State nickname: string = '反习惯达人'; // 用户名
+  @State signature: string = '日复一日，功不唐捐'; // 个性签名
+
   private context: common.UIAbilityContext | null = null;
   // 添加事件回调引用
   private habitsUpdatedCallback: () => void = () => {};
+  private profileUpdatedCallback: (data: ProfileUpdateEvent) => void = () => {};
 
   aboutToAppear() {
     this.context = getContext(this) as common.UIAbilityContext;
     this.loadAndCalculateStats();
-    
+
+    if (this.context) {
+      profileStorage.loadProfile(this.context).then((profile: ProfileInfo) => {
+        this.avatarUri = profile.avatarUri;
+        this.nickname = profile.nickname;
+        this.signature = profile.signature;
+      });
+    }
+
     // 监听习惯更新事件
     this.habitsUpdatedCallback = () => {
       setTimeout(() => {
@@ -28,17 +50,33 @@ export struct ProfilePage {
       }, 100);
     };
     eventBus.on('habitsUpdated', this.habitsUpdatedCallback);
+
+    // 监听个人资料更新
+    this.profileUpdatedCallback = (data: ProfileUpdateEvent) => {
+      if (data.avatarUri !== undefined) this.avatarUri = data.avatarUri;
+      if (data.nickname !== undefined) this.nickname = data.nickname;
+      if (data.signature !== undefined) this.signature = data.signature;
+    };
+    eventBus.on('profileUpdated', this.profileUpdatedCallback);
   }
 
   // 页面即将消失时取消订阅
   aboutToDisappear() {
     eventBus.off('habitsUpdated', this.habitsUpdatedCallback);
+    eventBus.off('profileUpdated', this.profileUpdatedCallback);
   }
 
   // 页面显示时刷新数据
   onPageShow() {
     if (this.context) {
       this.loadAndCalculateStats();
+
+      // 保证重新进入时能显示最新资料
+      profileStorage.loadProfile(this.context).then((profile: ProfileInfo) => {
+        this.avatarUri = profile.avatarUri;
+        this.nickname = profile.nickname;
+        this.signature = profile.signature;
+      });
     }
   }
 
@@ -64,7 +102,7 @@ export struct ProfilePage {
       this.longestStreak = 0;
       this.totalAchievements = 0;
       this.updateTrigger++;
-      
+
       // 使用setTimeout确保UI能正确更新
       setTimeout(() => {
         this.totalDays = total;
@@ -81,7 +119,7 @@ export struct ProfilePage {
   ProfileCard() {
     Row({ space: 15 }) {
       // 头像
-      Image($r('app.media.startIcon'))
+      Image(this.avatarUri ? this.avatarUri : $r('app.media.startIcon'))
         .width(60)
         .height(60)
         .borderRadius(30)
@@ -89,11 +127,11 @@ export struct ProfilePage {
 
       // 用户名和签名
       Column({ space: 5 }) {
-        Text('反习惯达人')
+        Text(this.nickname)
           .fontSize(20)
           .fontWeight(FontWeight.Bold)
           .fontColor(Color.Black)
-        Text('日复一日，功不唐捐')
+        Text(this.signature)
           .fontSize(14)
           .fontColor(Color.Gray)
       }
@@ -106,6 +144,12 @@ export struct ProfilePage {
     .borderRadius(15)
     .shadow({ radius: 8, color: '#1F000000', offsetY: 4 })
     .margin({ top: 20 })
+    // 点击进入个人资料页面
+    .onClick(() => {
+      router.pushUrl({
+        url: 'pages/EditProfilePage'
+      });
+    })
   }
 
   @Builder
@@ -130,9 +174,9 @@ export struct ProfilePage {
       .width('100%')
       .height(55)
       .padding({ left: 10, right: 10 })
-      
+
       Divider().width('90%').color('#E0E0E0').margin({ left: '10%' })
-      
+
       Row({ space: 15 }) {
         Text('🏆')
           .fontSize(20)
@@ -150,9 +194,9 @@ export struct ProfilePage {
       .width('100%')
       .height(55)
       .padding({ left: 10, right: 10 })
-      
+
       Divider().width('90%').color('#E0E0E0').margin({ left: '10%' })
-      
+
       Row({ space: 15 }) {
         Text('🌟')
           .fontSize(20)

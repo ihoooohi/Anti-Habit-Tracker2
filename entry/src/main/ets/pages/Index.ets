@@ -209,6 +209,7 @@ struct Index {
   .borderRadius(20)
   .shadow({ radius: 20, color: '#1F000000', offsetY: 8 })
   }
+
   @Builder DeleteConfirmDialog() { Column({ space: 20 }) {
     Text('⚠️')
       .fontSize(48)
