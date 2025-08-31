@@ -3,6 +3,7 @@ import common from '@ohos.app.ability.common';
 import { AntiHabit, FailureLog } from '../model/AntiHabit';
 import { habitStorage } from '../util/HabitStorage';
 import { calculateDaysBetween } from '../util/DateUtil';
+import { eventBus } from '../util/eventBus';
 
 interface CalendarDay {
   date: Date;
@@ -24,10 +25,22 @@ export struct RecordsPage {
   @State showHabitSelector: boolean = false;
 
   private context: common.UIAbilityContext | null = null;
+  // 在顶部定义一个变量存储回调引用
+  private habitsUpdatedCallback: () => void = () => {};
 
   aboutToAppear() {
     this.context = getContext(this) as common.UIAbilityContext;
     this.loadHabits();
+    // 监听习惯更新事件，并保存回调引用
+    this.habitsUpdatedCallback = () => {
+      this.loadHabits();
+    };
+    eventBus.on('habitsUpdated', this.habitsUpdatedCallback);
+  }
+
+  // 页面即将消失时取消订阅
+  aboutToDisappear() {
+    eventBus.off('habitsUpdated', this.habitsUpdatedCallback);
   }
 
   loadHabits() {
@@ -343,6 +356,7 @@ export struct RecordsPage {
         }
         .width('100%')
         .height(150)
+        .scrollBar(BarState.Off)   // 关闭滚动条
       } else {
         Text('暂无习惯记录')
           .fontSize(14)
@@ -392,6 +406,7 @@ export struct RecordsPage {
       }
       .width('100%')
       .layoutWeight(1)
+      .scrollBar(BarState.Off)   // 关闭滚动条
     }
     .width('100%')
     .height('100%')

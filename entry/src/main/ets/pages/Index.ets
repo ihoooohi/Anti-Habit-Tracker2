@@ -8,6 +8,7 @@ import router from '@ohos.router';
 import { FailureLogDialog } from '../view/FailureLogDialog';
 import { RecordsPage } from './RecordsPage'; // 1. 导入新页面
 import { ProfilePage } from './ProfilePage'; // 1. 导入新页面
+import { eventBus } from '../util/eventBus';
 
 interface AchievementDialogParams {
   names: string[];
@@ -135,6 +136,7 @@ struct Index {
     this.habits.unshift(newHabit);
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
+    eventBus.emit('habitsUpdated'); // 通知 RecordsPage
   }
 
   async deleteHabit(index: number) {
@@ -144,6 +146,7 @@ struct Index {
     this.habits = this.habits.filter((_, i) => i !== index);
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
+    eventBus.emit('habitsUpdated'); //通知 RecordsPage
   }
 
   private getDaysColor(days: number): string {
@@ -303,12 +306,16 @@ struct Index {
 
   // 2. 为导航栏的每个按钮创建一个Builder
   @Builder
-  TabButton(title: string, index: number) {
-    Column() {
+  TabButton(title: string, index: number, icon: Resource) {
+    Column({space: 4}) {
       // 这里可以放图标
+      Image(icon)
+        .width(20)   // 图标大小
+        .height(20)
+        .fillColor(this.currentTabIndex === index ? '#FF6B35' : '#999')
       Text(title)
         .fontColor(this.currentTabIndex === index ? '#FF6B35' : '#999')
-        .fontSize(12)
+        .fontSize(14)
     }
     .width('100%')
     .height('100%')
@@ -374,8 +381,8 @@ struct Index {
                     .margin({ top: 10, right: 10 })
                 }
               }
-            })
-          }.width('90%').layoutWeight(1).edgeEffect(EdgeEffect.Spring)
+            }, (habit: AntiHabit, index: number) => habit.id.toString())  // 指定唯一的key
+          }.width('90%').layoutWeight(1).edgeEffect(EdgeEffect.Spring).scrollBar(BarState.Off)   // 关闭滚动条
         } else {
           Column({ space: 20 }) {
             Text('📝').fontSize(64).opacity(0.5)
@@ -392,15 +399,15 @@ struct Index {
     Tabs({ barPosition: BarPosition.End }) {
       TabContent() {
         this.HomePageContent() // 调用Builder显示首页内容
-      }.tabBar(this.TabButton('首页', 0))
+      }.tabBar(this.TabButton('首页', 0, $r('app.media.ic_shouye')))
 
       TabContent() {
         RecordsPage()
-      }.tabBar(this.TabButton('记录', 1))
+      }.tabBar(this.TabButton('记录', 1, $r('app.media.ic_jilu')))
 
       TabContent() {
         ProfilePage()
-      }.tabBar(this.TabButton('我的', 2))
+      }.tabBar(this.TabButton('我的', 2, $r('app.media.ic_wode')))
     }
     .onChange((index: number) => {
       this.currentTabIndex = index;
