@@ -3,6 +3,7 @@ import common from '@ohos.app.ability.common';
 import { AntiHabit } from '../model/AntiHabit';
 import { calculateDaysBetween } from '../util/DateUtil';
 import { habitStorage } from '../util/HabitStorage';
+import { eventBus } from '../util/eventBus';
 
 @Entry
 @Component
@@ -10,12 +11,35 @@ export struct ProfilePage {
   @State totalDays: number = 0;
   @State longestStreak: number = 0;
   @State totalAchievements: number = 0;
+  @State updateTrigger: number = 0; // 用于强制UI更新
 
   private context: common.UIAbilityContext | null = null;
+  // 添加事件回调引用
+  private habitsUpdatedCallback: () => void = () => {};
 
   aboutToAppear() {
     this.context = getContext(this) as common.UIAbilityContext;
     this.loadAndCalculateStats();
+    
+    // 监听习惯更新事件
+    this.habitsUpdatedCallback = () => {
+      setTimeout(() => {
+        this.loadAndCalculateStats();
+      }, 100);
+    };
+    eventBus.on('habitsUpdated', this.habitsUpdatedCallback);
+  }
+
+  // 页面即将消失时取消订阅
+  aboutToDisappear() {
+    eventBus.off('habitsUpdated', this.habitsUpdatedCallback);
+  }
+
+  // 页面显示时刷新数据
+  onPageShow() {
+    if (this.context) {
+      this.loadAndCalculateStats();
+    }
   }
 
   loadAndCalculateStats() {
@@ -35,9 +59,21 @@ export struct ProfilePage {
         achievements += habit.unlockedAchievements.length;
       });
 
-      this.totalDays = total;
-      this.longestStreak = longest;
-      this.totalAchievements = achievements;
+      // 先清零所有状态，然后设置新值
+      this.totalDays = 0;
+      this.longestStreak = 0;
+      this.totalAchievements = 0;
+      this.updateTrigger++;
+      
+      // 使用setTimeout确保UI能正确更新
+      setTimeout(() => {
+        this.totalDays = total;
+        this.longestStreak = longest;
+        this.totalAchievements = achievements;
+        this.updateTrigger++;
+      }, 10);
+    }).catch((error: Error) => {
+      console.error('ProfilePage: 加载习惯数据失败', error);
     });
   }
 
@@ -76,12 +112,64 @@ export struct ProfilePage {
   CoreStatsCard() {
     // 采用竖向列表样式，更简洁
     Column() {
-      // 封装每个统计项
-      this.StatsRow('📅', '总坚持天数', `${this.totalDays}`)
+      // 直接使用Row组件确保状态绑定正确
+      Row({ space: 15 }) {
+        Text('📅')
+          .fontSize(20)
+          .width(24)
+          .textAlign(TextAlign.Center)
+        Text('总坚持天数')
+          .fontSize(16)
+          .fontColor(Color.Black)
+        Blank()
+        Text(`${this.totalDays}天`)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF6B35')
+      }
+      .width('100%')
+      .height(55)
+      .padding({ left: 10, right: 10 })
+      
       Divider().width('90%').color('#E0E0E0').margin({ left: '10%' })
-      this.StatsRow('🏆', '最长单项纪录', `${this.longestStreak}`)
+      
+      Row({ space: 15 }) {
+        Text('🏆')
+          .fontSize(20)
+          .width(24)
+          .textAlign(TextAlign.Center)
+        Text('最长单项纪录')
+          .fontSize(16)
+          .fontColor(Color.Black)
+        Blank()
+        Text(`${this.longestStreak}天`)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF6B35')
+      }
+      .width('100%')
+      .height(55)
+      .padding({ left: 10, right: 10 })
+      
       Divider().width('90%').color('#E0E0E0').margin({ left: '10%' })
-      this.StatsRow('🌟', '已解锁成就', `${this.totalAchievements}`)
+      
+      Row({ space: 15 }) {
+        Text('🌟')
+          .fontSize(20)
+          .width(24)
+          .textAlign(TextAlign.Center)
+        Text('已解锁成就')
+          .fontSize(16)
+          .fontColor(Color.Black)
+        Blank()
+        Text(`${this.totalAchievements}个`)
+          .fontSize(16)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#FF6B35')
+      }
+      .width('100%')
+      .height(55)
+      .padding({ left: 10, right: 10 })
     }
     .width('90%')
     .padding({ left: 15, right: 15 })

@@ -48,7 +48,12 @@ export struct RecordsPage {
     
     habitStorage.loadHabits(this.context).then(habits => {
       this.habits = habits;
-      if (habits.length > 0 && !this.selectedHabit) {
+      // 如果当前选择的习惯不在新的习惯列表中，重置选择
+      if (this.selectedHabit && !habits.find(h => h.id === this.selectedHabit!.id)) {
+        this.selectedHabit = null;
+      }
+      // 如果没有选择习惯且有习惯数据，默认选择第一个
+      if (!this.selectedHabit && habits.length > 0) {
         this.selectedHabit = habits[0];
       }
       this.generateCalendar();
@@ -100,14 +105,21 @@ export struct RecordsPage {
   calculateDayStatus(dayData: CalendarDay) {
     const targetDate = dayData.date;
     
-    this.habits.forEach(habit => {
-      // 检查是否是成功的日期（在最后破戒日期之后）
-      if (targetDate > habit.lastBreakDate) {
-        const daysSinceBreak = calculateDaysBetween(habit.lastBreakDate, targetDate);
-        if (daysSinceBreak > 0) {
-          dayData.isSuccessDay = true;
-          dayData.successCount++;
-        }
+    // 如果选择了特定习惯，只计算该习惯的数据
+    const habitsToCheck = this.selectedHabit ? [this.selectedHabit] : this.habits;
+    
+    habitsToCheck.forEach(habit => {
+      // 检查是否是成功的日期（在最后破戒日期之后且不是今天之后的日期）
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // 重置时间部分
+      const checkDate = new Date(targetDate);
+      checkDate.setHours(0, 0, 0, 0);
+      const breakDate = new Date(habit.lastBreakDate);
+      breakDate.setHours(0, 0, 0, 0);
+      
+      if (checkDate > breakDate && checkDate <= today) {
+        dayData.isSuccessDay = true;
+        dayData.successCount++;
       }
       
       // 检查失败记录
@@ -121,9 +133,11 @@ export struct RecordsPage {
   }
 
   isSameDate(date1: Date, date2: Date): boolean {
-    return date1.getFullYear() === date2.getFullYear() &&
-           date1.getMonth() === date2.getMonth() &&
-           date1.getDate() === date2.getDate();
+    const d1 = new Date(date1);
+    const d2 = new Date(date2);
+    d1.setHours(0, 0, 0, 0);
+    d2.setHours(0, 0, 0, 0);
+    return d1.getTime() === d2.getTime();
   }
 
   previousMonth() {
@@ -245,16 +259,47 @@ export struct RecordsPage {
     .height('100%')
     .alignContent(Alignment.Center)
     .layoutWeight(1)
+    .backgroundColor((day.isSuccessDay || day.isFailureDay) ? '#F8F9FA' : Color.Transparent)
+    .borderRadius(4)
     .onClick(() => {
-      // 可以添加点击事件显示详细信息
-      this.showDayDetails(day);
+      // 只有有数据的日期才显示详情
+      if (day.isSuccessDay || day.isFailureDay) {
+        this.showDayDetails(day);
+      }
     })
   }
 
   showDayDetails(day: CalendarDay) {
-    // 这里可以添加显示详细信息的逻辑
-    console.info(`点击日期: ${day.date.toDateString()}`);
-    console.info(`成功次数: ${day.successCount}, 失败次数: ${day.failureCount}`);
+    if (!day.isSuccessDay && !day.isFailureDay) return;
+    
+    let message = `${day.date.getFullYear()}年${day.date.getMonth() + 1}月${day.date.getDate()}日\n\n`;
+    
+    if (day.isSuccessDay) {
+      message += `✅ 成功坚持: ${day.successCount}个习惯\n`;
+    }
+    
+    if (day.isFailureDay) {
+      message += `❌ 失败记录: ${day.failureCount}次\n\n`;
+      
+      // 显示具体的失败原因
+      const habitsToCheck = this.selectedHabit ? [this.selectedHabit] : this.habits;
+      habitsToCheck.forEach(habit => {
+        habit.failureLogs.forEach(log => {
+          if (this.isSameDate(log.date, day.date)) {
+            message += `• ${habit.name}: ${log.reason}\n`;
+          }
+        });
+      });
+    }
+    
+    AlertDialog.show({
+      title: '日期详情',
+      message: message,
+      confirm: {
+        value: '确定',
+        action: () => {}
+      }
+    });
   }
 
   getWeeks(): CalendarDay[][] {
@@ -325,6 +370,38 @@ export struct RecordsPage {
         .alignSelf(ItemAlign.Start)
 
       if (this.habits.length > 0) {
+        // 添加"全部习惯"选项
+        Column() {
+          Row({ space: 12 }) {
+            Circle()
+              .width(8)
+              .height(8)
+              .fill(this.selectedHabit === null ? '#FF6B35' : '#DDD')
+
+            Text('全部习惯')
+              .fontSize(14)
+              .fontColor(this.selectedHabit === null ? '#FF6B35' : '#333')
+              .layoutWeight(1)
+
+            Text(`${this.habits.length}个`)
+              .fontSize(12)
+              .fontColor('#666')
+          }
+          .width('100%')
+          .padding({ left: 12, right: 12, top: 8, bottom: 8 })
+          .backgroundColor(this.selectedHabit === null ? '#FFF3F0' : Color.Transparent)
+          .borderRadius(6)
+          .onClick(() => {
+            this.selectedHabit = null;
+            this.generateCalendar();
+          })
+
+          Divider()
+            .width('90%')
+            .color('#E0E0E0')
+            .margin({ top: 5, bottom: 5 })
+        }
+        
         List({ space: 8 }) {
           ForEach(this.habits, (habit: AntiHabit, index: number) => {
             ListItem() {
@@ -355,7 +432,7 @@ export struct RecordsPage {
           })
         }
         .width('100%')
-        .height(150)
+        .height(120)
         .scrollBar(BarState.Off)   // 关闭滚动条
       } else {
         Text('暂无习惯记录')

@@ -106,6 +106,10 @@ struct Index {
           habitStorage.saveHabits(this.context, this.habits);
         }
       }
+      
+      // 无论是否有成就变化，都通知其他页面刷新数据
+      // 因为日期变化可能影响坚持天数计算
+      eventBus.emit('habitsUpdated');
     })
   }
 
@@ -127,6 +131,7 @@ struct Index {
     this.habits[index] = AntiHabit.fromJSON(habitToUpdate.toJSON());
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
+    eventBus.emit('habitsUpdated'); // 通知其他页面数据已更新
   }
 
   async addNewHabit(name: string) {
@@ -136,7 +141,7 @@ struct Index {
     this.habits.unshift(newHabit);
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
-    eventBus.emit('habitsUpdated'); // 通知 RecordsPage
+    eventBus.emit('habitsUpdated'); // 通知其他页面
   }
 
   async deleteHabit(index: number) {
@@ -146,7 +151,7 @@ struct Index {
     this.habits = this.habits.filter((_, i) => i !== index);
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
-    eventBus.emit('habitsUpdated'); //通知 RecordsPage
+    eventBus.emit('habitsUpdated'); // 通知其他页面
   }
 
   private getDaysColor(days: number): string {
