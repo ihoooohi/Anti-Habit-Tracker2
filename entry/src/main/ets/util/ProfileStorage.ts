@@ -39,19 +39,19 @@ class ProfileStorage {
 
       if (!profileJson) {
         return {
-          avatarUri: '', // 空值由页面处理默认头像
+          avatarUri: 'default', // 用占位符标识默认头像
           nickname: '反习惯达人',
           signature: '日复一日，功不唐捐'
         };
       }
 
       const profile = JSON.parse(profileJson) as ProfileInfo;
-      if (!profile.avatarUri) profile.avatarUri = ''; // 空值由页面处理
+      if (!profile.avatarUri) profile.avatarUri = 'default';
       return profile;
     } catch (e) {
       console.error('Failed to load profile.', JSON.stringify(e));
       return {
-        avatarUri: '',
+        avatarUri: 'default',
         nickname: '反习惯达人',
         signature: '日复一日，功不唐捐'
       };

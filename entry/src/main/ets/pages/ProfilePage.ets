@@ -119,16 +119,16 @@ export struct ProfilePage {
   ProfileCard() {
     Row({ space: 15 }) {
       // 头像
-      Image(this.avatarUri ? this.avatarUri : $r('app.media.startIcon'))
-        .width(60)
-        .height(60)
-        .borderRadius(30)
+      Image(this.avatarUri && this.avatarUri !== 'default' ? this.avatarUri : $r('app.media.ic_default_avatar'))
+        .width(70)
+        .height(70)
+        .borderRadius(8)
         .border({ width: 2, color: Color.White })
 
       // 用户名和签名
       Column({ space: 5 }) {
         Text(this.nickname)
-          .fontSize(20)
+          .fontSize(22)
           .fontWeight(FontWeight.Bold)
           .fontColor(Color.Black)
         Text(this.signature)

@@ -3,13 +3,13 @@ import common from '@ohos.app.ability.common';
 import { eventBus } from '../util/eventBus';
 import { EditProfileDialog } from '../view/EditProfileDialog';
 import { profileStorage, ProfileInfo } from '../util/ProfileStorage';
+import { ImagePicker } from '../util/ImagePicker';
 
 @Entry
 @Component
 export struct EditProfilePage {
   // 分开 UI 显示 Resource 和存储 string
-  @State avatarUriUI: Resource = $r('app.media.startIcon'); // 用于 Image 显示
-  private avatarUriStr: string = 'app.media.startIcon';       // 用于存储
+  @State avatarUri: string = 'default';
   @State nickname: string = '反习惯达人';
   @State signature: string = '日复一日，功不唐捐';
 
@@ -32,9 +32,7 @@ export struct EditProfilePage {
       profileStorage
         .loadProfile(this.context as common.UIAbilityContext)
         .then((profile: ProfileInfo) => { // <- 显式标注 ProfileInfo
-          // 使用字符串存储，UI 显示用 $r(string)
-          this.avatarUriStr = profile.avatarUri || 'app.media.startIcon';
-          this.avatarUriUI = $r(this.avatarUriStr);
+          this.avatarUri = profile.avatarUri || 'default';
           this.nickname = profile.nickname;
           this.signature = profile.signature;
         })
@@ -54,10 +52,7 @@ export struct EditProfilePage {
 
     // 订阅 profileUpdated 事件
     this.profileUpdatedCallback = (data: ProfileInfo) => {
-      if (data.avatarUri !== undefined) {
-        this.avatarUriStr = data.avatarUri;
-        this.avatarUriUI = $r(this.avatarUriStr);
-      }
+      if (data.avatarUri !== undefined) this.avatarUri = data.avatarUri;
       if (data.nickname !== undefined) this.nickname = data.nickname;
       if (data.signature !== undefined) this.signature = data.signature;
     };
@@ -87,7 +82,7 @@ export struct EditProfilePage {
 
     // 保存 string 路径
     const profileToSave: ProfileInfo = {
-      avatarUri: this.avatarUriStr,
+      avatarUri: this.avatarUri, // 存储字符串
       nickname: this.nickname,
       signature: this.signature
     };
@@ -102,6 +97,7 @@ export struct EditProfilePage {
     this.currentEditField = '';
     this.inputDialogController?.close();
   }
+
 
   @Builder
   private EditProfileDialogBuilder() {
@@ -139,16 +135,40 @@ export struct EditProfilePage {
     Divider().color('#E0E0E0').width('90%').margin({ left: '10%' });
   }
 
+  // 点击头像，调用相册
+  private async onChangeAvatar() {
+    if (!this.context) return;
+
+    const uri = await ImagePicker.pickImage(this.context);
+    if (uri) {
+      this.avatarUri = uri;
+
+      const profileToSave: ProfileInfo = {
+        avatarUri: this.avatarUri,
+        nickname: this.nickname,
+        signature: this.signature
+      };
+
+      try {
+        await profileStorage.saveProfile(this.context, profileToSave);
+        eventBus.emit('profileUpdated', profileToSave); // 同步更新到我的页面
+      } catch (e) {
+        console.error('save avatar error', e as Error);
+      }
+    }
+  }
+
+
   build() {
     Column() {
       Text('个人资料').fontSize(24).fontWeight('bold').margin({ top: 20, bottom: 20 });
 
       Row({ space: 15 }) {
         Text("头像").fontSize(16).fontColor('#333333').padding({ left: 15 });
-        Image(this.avatarUriUI)
+        Image(this.avatarUri && this.avatarUri !== 'default' ? this.avatarUri : $r('app.media.ic_default_avatar'))
           .width(70)
           .height(70)
-          .borderRadius(35)
+          .borderRadius(8)
           .margin({ right: 15 })
           .border({ width: 2, color: '#FFFFFF' });
       }
@@ -157,7 +177,10 @@ export struct EditProfilePage {
       .alignItems(VerticalAlign.Center)
       .justifyContent(FlexAlign.SpaceBetween)
       .backgroundColor('#FFFFFF')
-      .borderRadius(8);
+      .borderRadius(8)
+      .onClick(() => {
+        void this.onChangeAvatar(); // 调用相册
+      });
 
       Divider().width('90%').color('#E0E0E0').margin({ left: '5%' });
 
