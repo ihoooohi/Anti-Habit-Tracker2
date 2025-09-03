@@ -9,6 +9,7 @@ import { FailureLogDialog } from '../view/FailureLogDialog';
 import { RecordsPage } from './RecordsPage'; // 1. 导入新页面
 import { ProfilePage } from './ProfilePage'; // 1. 导入新页面
 import { eventBus } from '../util/eventBus';
+import { BreakConfirmDialog } from '../view/BreakConfirmDialog'; // 新增导入
 
 interface AchievementDialogParams {
   names: string[];
@@ -18,11 +19,11 @@ interface AchievementDialogParams {
 @Component
 struct Index {
   @State habits: AntiHabit[] = [];
-  @State habitToDeleteIndex: number = -1;
+  @State habitToDeleteId: number | null = null;
   @State newAchievementNames: string[] = [];
   @State totalDays: number = 0;
   @State todayProgress: number = 0;
-  @State habitToResetIndex: number = -1;
+  @State habitToResetId: number | null = null;
   @State currentTabIndex: number = 0; // 用于控制当前选中的Tab
 
   private context: common.UIAbilityContext | null = null;
@@ -32,14 +33,35 @@ struct Index {
     autoCancel: true
   });
 
+  private breakConfirmDialogController: CustomDialogController = new CustomDialogController({
+    builder: this.BreakConfirmDialogBuilder,
+    autoCancel: true
+  });
+
   @Builder
   private FailureLogDialogBuilder() {
     FailureLogDialog({
       controller: this.failureLogDialogController,
       onConfirm: (reason: string) => {
-        if (this.habitToResetIndex !== -1) {
-          this.logFailure(this.habitToResetIndex, reason);
+        if (this.habitToResetId !== null) { // *** 修改点 ***
+          this.logFailureById(this.habitToResetId, reason); // *** 修改点 ***
+          this.habitToResetId = null; // 清除
         }
+      }
+    })
+  }
+
+  @Builder
+  private BreakConfirmDialogBuilder() {
+    BreakConfirmDialog({
+      controller: this.breakConfirmDialogController,
+      onConfirm: () => {
+        // 用户确认破戒 → 再弹出失败原因对话框
+        this.failureLogDialogController.open();
+      },
+      onCancel: () => {
+        // 用户取消 → 什么也不做
+        this.habitToResetId = null;
       }
     })
   }
@@ -113,15 +135,17 @@ struct Index {
     })
   }
 
-  resetHabit(index: number) {
-    this.habitToResetIndex = index;
-    this.failureLogDialogController.open();
+  // *** 修改点 ***：改为按 id 打开“重置/失败记录”弹窗
+  resetHabitById(id: number) { // *** 修改点 ***
+    this.habitToResetId = id; // *** 修改点 ***
+    this.breakConfirmDialogController.open(); // 先弹出确认框
   }
 
-  async logFailure(index: number, reason: string) {
-    if (!this.context || index < 0 || index >= this.habits.length) {
-      return;
-    }
+  // *** 修改点 ***：按 id 记录失败（避免 index 过时）
+  async logFailureById(id: number, reason: string) { // *** 修改点 ***
+    if (!this.context) return;
+    const index = this.habits.findIndex(h => h.id === id); // *** 修改点 ***
+    if (index === -1) return; // 不存在则返回
 
     const habitToUpdate = this.habits[index];
     const newLog: FailureLog = { date: new Date(), reason: reason };
@@ -131,7 +155,7 @@ struct Index {
     this.habits[index] = AntiHabit.fromJSON(habitToUpdate.toJSON());
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
-    eventBus.emit('habitsUpdated'); // 通知其他页面数据已更新
+    eventBus.emit('habitsUpdated');
   }
 
   async addNewHabit(name: string) {
@@ -239,8 +263,12 @@ struct Index {
         .type(ButtonType.Capsule)
         .backgroundColor('#FF4444')
         .onClick(() => {
-          if (this.habitToDeleteIndex !== -1) {
-            this.deleteHabit(this.habitToDeleteIndex);
+          if (this.habitToDeleteId !== null) { // *** 修改点 ***
+            const idx = this.habits.findIndex(h => h.id === this.habitToDeleteId); // *** 修改点 ***
+            if (idx !== -1) {
+              this.deleteHabit(idx);
+            }
+            this.habitToDeleteId = null; // 清除
           }
           this.deleteDialogController.close();
         })
@@ -368,7 +396,7 @@ struct Index {
                     .width('100%').padding({ top: 20, left: 20, right: 20, bottom: 15 })
                     .onClick(() => {
                       if (!this.context) return;
-                      const habitData = this.habits[index].toJSON();
+                      const habitData = habit.toJSON(); // *** 修改点 ***
                       router.pushUrl({
                         url: 'pages/HabitDetailPage',
                         params: { habit: habitData }
@@ -376,15 +404,15 @@ struct Index {
                     })
                     Button('我失败了 😔', { type: ButtonType.Capsule })
                       .width('70%').height(40).backgroundColor('#FF5252').fontColor(Color.White).fontSize(14).margin({ bottom: 20 })
-                      .onClick(() => { this.resetHabit(index); })
+                      .onClick(() => { this.resetHabitById(habit.id); }) // *** 修改点 ***
                   }
                   .width('100%').backgroundColor(Color.White).borderRadius(15)
                   .shadow({ radius: 8, color: '#1A000000', offsetX: 0, offsetY: 4 })
                   .alignItems(HorizontalAlign.Center)
                   Button({ type: ButtonType.Circle }) { Text('×').fontSize(18).fontColor('#999') }
                     .width(20).height(20).backgroundColor('#F5F5F5')
-                    .onClick(() => { this.habitToDeleteIndex = index; this.deleteDialogController.open(); })
                     .margin({ top: 10, right: 10 })
+                    .onClick(() => { this.habitToDeleteId = habit.id; this.deleteDialogController.open(); }) // *** 修改点 ***
                 }
               }
             }, (habit: AntiHabit, index: number) => habit.id.toString())  // 指定唯一的key
