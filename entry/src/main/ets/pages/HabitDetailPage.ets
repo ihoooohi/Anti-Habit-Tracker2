@@ -3,6 +3,9 @@ import { Achievement } from '../model/Achievement';
 import { AntiHabit, FailureLog } from '../model/AntiHabit'; // 引入FailureLog
 import { ALL_ACHIEVEMENTS } from '../util/AchievementList';
 import { calculateDaysBetween } from '../util/DateUtil';
+import { eventBus } from '../util/eventBus';
+import { habitStorage } from '../util/HabitStorage';
+import common from '@ohos.app.ability.common';
 
 interface RouteParams {
   habit: AntiHabit;
@@ -16,6 +19,10 @@ struct HabitDetailPage { // 1. 重命名 Struct
   @State totalCount: number = 0;
   @State currentDays: number = 0;
   @State currentTabIndex: number = 0; // 用于控制Tabs
+  
+  private context: common.UIAbilityContext | null = null;
+  private habitId: number = -1; // 存储习惯ID用于重新加载
+  private boundOnHabitsUpdated: () => Promise<void> = async () => {}; // 初始化为空函数
 
   // 格式化日期
   private formatDate(date: Date): string {
@@ -31,10 +38,41 @@ struct HabitDetailPage { // 1. 重命名 Struct
     const params = router.getParams() as RouteParams;
     if (params && params.habit) {
       this.habit = AntiHabit.fromJSON(params.habit);
+      this.habitId = this.habit.id; // 保存习惯ID
       this.calculateStats();
+      
+      // 获取context
+      this.context = getContext(this) as common.UIAbilityContext;
+      
+      // 绑定方法引用
+      this.boundOnHabitsUpdated = this.onHabitsUpdated.bind(this);
+      
+      // 监听数据更新事件
+      eventBus.on('habitsUpdated', this.boundOnHabitsUpdated);
     } else {
       console.error('HabitDetailPage: Failed to get habit from router params.');
       router.back();
+    }
+  }
+  
+  aboutToDisappear() {
+    // 取消监听事件
+    eventBus.off('habitsUpdated', this.boundOnHabitsUpdated);
+  }
+  
+  // 当收到习惯更新事件时重新加载数据
+  private async onHabitsUpdated() {
+    if (this.context && this.habitId !== -1) {
+      try {
+        const habits = await habitStorage.loadHabits(this.context);
+        const updatedHabit = habits.find(h => h.id === this.habitId);
+        if (updatedHabit) {
+          this.habit = updatedHabit;
+          this.calculateStats();
+        }
+      } catch (error) {
+        console.error('Failed to reload habit data:', error);
+      }
     }
   }
 
