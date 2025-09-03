@@ -28,6 +28,25 @@ struct Index {
 
   private context: common.UIAbilityContext | null = null;
 
+  // 新增生命周期钩子，监听 eventBus
+  aboutToAppear() {
+    eventBus.on('habitsUpdated', this.handleHabitsUpdated.bind(this));
+  }
+
+  // 页面销毁时移除监听，避免内存泄漏
+  aboutToDisappear() {
+    eventBus.off('habitsUpdated', this.handleHabitsUpdated.bind(this));
+  }
+
+  // 抽取一个方法专门刷新首页数据
+  private handleHabitsUpdated() {
+    if (!this.context) return;
+    habitStorage.loadHabits(this.context).then(loaded => {
+      this.habits = loaded; // 重新赋值整个数组，保证响应式更新
+      this.calculateStats();
+    });
+  }
+
   private failureLogDialogController: CustomDialogController = new CustomDialogController({
     builder: this.FailureLogDialogBuilder,
     autoCancel: true
@@ -43,8 +62,8 @@ struct Index {
     FailureLogDialog({
       controller: this.failureLogDialogController,
       onConfirm: (reason: string) => {
-        if (this.habitToResetId !== null) { // *** 修改点 ***
-          this.logFailureById(this.habitToResetId, reason); // *** 修改点 ***
+        if (this.habitToResetId !== null) {
+          this.logFailureById(this.habitToResetId, reason);
           this.habitToResetId = null; // 清除
         }
       }
@@ -106,6 +125,7 @@ struct Index {
 
   onPageShow() {
     this.context = getContext(this) as common.UIAbilityContext;
+    this.handleHabitsUpdated(); // 进入页面时也调用一次
     habitStorage.loadHabits(this.context).then(loadedHabits => {
       let anyChange = false;
       let allNewNames: string[] = [];
@@ -135,16 +155,16 @@ struct Index {
     })
   }
 
-  // *** 修改点 ***：改为按 id 打开“重置/失败记录”弹窗
-  resetHabitById(id: number) { // *** 修改点 ***
-    this.habitToResetId = id; // *** 修改点 ***
+  // 改为按 id 打开“重置/失败记录”弹窗
+  resetHabitById(id: number) {
+    this.habitToResetId = id;
     this.breakConfirmDialogController.open(); // 先弹出确认框
   }
 
-  // *** 修改点 ***：按 id 记录失败（避免 index 过时）
-  async logFailureById(id: number, reason: string) { // *** 修改点 ***
+  // 按 id 记录失败（避免 index 过时）
+  async logFailureById(id: number, reason: string) {
     if (!this.context) return;
-    const index = this.habits.findIndex(h => h.id === id); // *** 修改点 ***
+    const index = this.habits.findIndex(h => h.id === id);
     if (index === -1) return; // 不存在则返回
 
     const habitToUpdate = this.habits[index];
@@ -153,6 +173,7 @@ struct Index {
     habitToUpdate.lastBreakDate = new Date();
     habitToUpdate.unlockedAchievements = [];
     this.habits[index] = AntiHabit.fromJSON(habitToUpdate.toJSON());
+    this.habits = [...this.habits]; // 修改这里，强制刷新UI
     await habitStorage.saveHabits(this.context, this.habits);
     this.calculateStats();
     eventBus.emit('habitsUpdated');
@@ -263,8 +284,8 @@ struct Index {
         .type(ButtonType.Capsule)
         .backgroundColor('#FF4444')
         .onClick(() => {
-          if (this.habitToDeleteId !== null) { // *** 修改点 ***
-            const idx = this.habits.findIndex(h => h.id === this.habitToDeleteId); // *** 修改点 ***
+          if (this.habitToDeleteId !== null) {
+            const idx = this.habits.findIndex(h => h.id === this.habitToDeleteId);
             if (idx !== -1) {
               this.deleteHabit(idx);
             }
@@ -396,7 +417,7 @@ struct Index {
                     .width('100%').padding({ top: 20, left: 20, right: 20, bottom: 15 })
                     .onClick(() => {
                       if (!this.context) return;
-                      const habitData = habit.toJSON(); // *** 修改点 ***
+                      const habitData = habit.toJSON();
                       router.pushUrl({
                         url: 'pages/HabitDetailPage',
                         params: { habit: habitData }
@@ -404,7 +425,7 @@ struct Index {
                     })
                     Button('我失败了 😔', { type: ButtonType.Capsule })
                       .width('70%').height(40).backgroundColor('#FF5252').fontColor(Color.White).fontSize(14).margin({ bottom: 20 })
-                      .onClick(() => { this.resetHabitById(habit.id); }) // *** 修改点 ***
+                      .onClick(() => { this.resetHabitById(habit.id); })
                   }
                   .width('100%').backgroundColor(Color.White).borderRadius(15)
                   .shadow({ radius: 8, color: '#1A000000', offsetX: 0, offsetY: 4 })
@@ -412,7 +433,7 @@ struct Index {
                   Button({ type: ButtonType.Circle }) { Text('×').fontSize(18).fontColor('#999') }
                     .width(20).height(20).backgroundColor('#F5F5F5')
                     .margin({ top: 10, right: 10 })
-                    .onClick(() => { this.habitToDeleteId = habit.id; this.deleteDialogController.open(); }) // *** 修改点 ***
+                    .onClick(() => { this.habitToDeleteId = habit.id; this.deleteDialogController.open(); })
                 }
               }
             }, (habit: AntiHabit, index: number) => habit.id.toString())  // 指定唯一的key
