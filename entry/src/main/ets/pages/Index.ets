@@ -18,11 +18,11 @@ interface AchievementDialogParams {
 @Component
 struct Index {
   @State habits: AntiHabit[] = [];
-  @State habitToDeleteIndex: number = -1;
+  @State habitToDeleteId: number = -1; // 改为使用ID而不是索引
   @State newAchievementNames: string[] = [];
   @State totalDays: number = 0;
   @State todayProgress: number = 0;
-  @State habitToResetIndex: number = -1;
+  @State habitToResetId: number = -1; // 也改为使用ID
   @State currentTabIndex: number = 0; // 用于控制当前选中的Tab
   @State habitDays: number[] = []; // 存储每个习惯的当前天数
 
@@ -38,8 +38,8 @@ struct Index {
     FailureLogDialog({
       controller: this.failureLogDialogController,
       onConfirm: (reason: string) => {
-        if (this.habitToResetIndex !== -1) {
-          this.logFailure(this.habitToResetIndex, reason);
+        if (this.habitToResetId !== -1) {
+          this.logFailure(this.habitToResetId, reason);
         }
       }
     })
@@ -121,17 +121,22 @@ struct Index {
     })
   }
 
-  resetHabit(index: number) {
-    this.habitToResetIndex = index;
+  resetHabit(habitId: number) {
+    this.habitToResetId = habitId;
     this.failureLogDialogController.open();
   }
 
-  async logFailure(index: number, reason: string) {
-    if (!this.context || index < 0 || index >= this.habits.length) {
+  async logFailure(habitId: number, reason: string) {
+    if (!this.context || habitId === -1) {
       return;
     }
 
-    const habitToUpdate = this.habits[index];
+    const habitIndex = this.habits.findIndex(h => h.id === habitId);
+    if (habitIndex === -1) {
+      return; // 找不到对应的习惯
+    }
+
+    const habitToUpdate = this.habits[habitIndex];
     const newLog: FailureLog = { date: new Date(), reason: reason };
     habitToUpdate.failureLogs.push(newLog);
     habitToUpdate.lastBreakDate = new Date();
@@ -139,7 +144,7 @@ struct Index {
     
     // 创建新的数组以触发响应式更新
     const updatedHabits = [...this.habits];
-    updatedHabits[index] = AntiHabit.fromJSON(habitToUpdate.toJSON());
+    updatedHabits[habitIndex] = AntiHabit.fromJSON(habitToUpdate.toJSON());
     this.habits = updatedHabits;
     
     await habitStorage.saveHabits(this.context, this.habits);
@@ -157,14 +162,19 @@ struct Index {
     eventBus.emit('habitsUpdated'); // 通知其他页面
   }
 
-  async deleteHabit(index: number) {
-    if (!this.context || index < 0 || index >= this.habits.length) {
+  async deleteHabit(habitId: number) {
+    if (!this.context || habitId === -1) {
       return;
     }
-    this.habits = this.habits.filter((_, i) => i !== index);
-    await habitStorage.saveHabits(this.context, this.habits);
-    this.calculateStats();
-    eventBus.emit('habitsUpdated'); // 通知其他页面
+    const initialLength = this.habits.length;
+    this.habits = this.habits.filter(habit => habit.id !== habitId);
+    
+    // 确认删除成功
+    if (this.habits.length < initialLength) {
+      await habitStorage.saveHabits(this.context, this.habits);
+      this.calculateStats();
+      eventBus.emit('habitsUpdated'); // 通知其他页面
+    }
   }
 
   private getDaysColor(days: number): string {
@@ -251,8 +261,8 @@ struct Index {
         .type(ButtonType.Capsule)
         .backgroundColor('#FF4444')
         .onClick(() => {
-          if (this.habitToDeleteIndex !== -1) {
-            this.deleteHabit(this.habitToDeleteIndex);
+          if (this.habitToDeleteId !== -1) {
+            this.deleteHabit(this.habitToDeleteId);
           }
           this.deleteDialogController.close();
         })
@@ -388,14 +398,14 @@ struct Index {
                     })
                     Button('我失败了 😔', { type: ButtonType.Capsule })
                       .width('70%').height(40).backgroundColor('#FF5252').fontColor(Color.White).fontSize(14).margin({ bottom: 20 })
-                      .onClick(() => { this.resetHabit(index); })
+                      .onClick(() => { this.resetHabit(habit.id); })
                   }
                   .width('100%').backgroundColor(Color.White).borderRadius(15)
                   .shadow({ radius: 8, color: '#1A000000', offsetX: 0, offsetY: 4 })
                   .alignItems(HorizontalAlign.Center)
                   Button({ type: ButtonType.Circle }) { Text('×').fontSize(18).fontColor('#999') }
                     .width(20).height(20).backgroundColor('#F5F5F5')
-                    .onClick(() => { this.habitToDeleteIndex = index; this.deleteDialogController.open(); })
+                    .onClick(() => { this.habitToDeleteId = habit.id; this.deleteDialogController.open(); })
                     .margin({ top: 10, right: 10 })
                 }
               }
